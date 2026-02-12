@@ -1,0 +1,147 @@
+
+import React, { useState } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
+
+const ContactForm: React.FC = () => {
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    destination: '',
+    duration: '',
+    people: '2',
+    vibe: [] as string[]
+  });
+
+  const vibes = ['Adventurous', 'Foodie', 'Family', 'Luxury', 'Minimalist', 'Spiritual'];
+
+  const toggleVibe = (vibe: string) => {
+    setFormData(prev => ({
+      ...prev,
+      vibe: prev.vibe.includes(vibe) 
+        ? prev.vibe.filter(v => v !== vibe)
+        : [...prev.vibe, vibe]
+    }));
+  };
+
+  const getAiRecommendation = async () => {
+    if (!formData.destination) {
+      alert("Please enter a destination first!");
+      return;
+    }
+    
+    setIsAiLoading(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `I am planning a trip for ${formData.people} people to ${formData.destination} for a duration of ${formData.duration || 'several'} days. My preferred vibes are ${formData.vibe.join(', ') || 'undecided'}. Give me a 2-sentence "vibe check" for this destination and suggest one unique thing I must do there. Keep it boho-chic and inspiring.`,
+      });
+      setAiSuggestion(response.text);
+    } catch (error) {
+      console.error("AI Error:", error);
+      setAiSuggestion("The universe is keeping its secrets for now. Try again later!");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  return (
+    <div className="relative p-8 md:p-12 rounded-[2.5rem] overflow-hidden">
+      {/* Background image for glass effect */}
+      <img 
+        src="https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&q=80&w=800" 
+        className="absolute inset-0 w-full h-full object-cover blur-sm opacity-20" 
+        alt="Glass Background" 
+      />
+      
+      <div className="glass relative z-10 p-10 rounded-[2rem] shadow-2xl">
+        <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
+          <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-charcoal/60 px-1">Destination</label>
+              <input 
+                type="text" 
+                placeholder="(eg. Amalfi Coast, Bali, Tokyo)" 
+                className="w-full p-5 bg-white/60 border border-white/40 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#E2725B]/40 transition-all font-serif placeholder:text-gray-400"
+                value={formData.destination}
+                onChange={(e) => setFormData({...formData, destination: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-charcoal/60 px-1">Number of days</label>
+              <input 
+                type="text" 
+                placeholder="e.g. 7 or 14" 
+                className="w-full p-5 bg-white/60 border border-white/40 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#E2725B]/40 transition-all placeholder:text-gray-400"
+                value={formData.duration}
+                onChange={(e) => setFormData({...formData, duration: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-charcoal/60 px-1">Number of people</label>
+              <input 
+                type="number" 
+                min="1"
+                placeholder="How many?" 
+                className="w-full p-5 bg-white/60 border border-white/40 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#E2725B]/40 transition-all placeholder:text-gray-400"
+                value={formData.people}
+                onChange={(e) => setFormData({...formData, people: e.target.value})}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-charcoal/60 px-1 block mb-4">Select Your Trip Vibe</label>
+            <div className="flex flex-wrap gap-3">
+              {vibes.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => toggleVibe(v)}
+                  className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all border ${
+                    formData.vibe.includes(v)
+                    ? 'terracotta-bg text-white border-[#E2725B] shadow-lg shadow-[#E2725B]/30'
+                    : 'bg-white/50 text-gray-500 border-white/40 hover:bg-white'
+                  }`}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {aiSuggestion && (
+            <div className="p-8 bg-orange-50/80 backdrop-blur rounded-2xl border border-orange-100 animate-fade-in relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-2 text-xl opacity-20 rotate-12 transition-transform group-hover:rotate-45">✨</div>
+              <h4 className="text-[10px] font-bold uppercase tracking-widest terracotta-text mb-3">AI Curator Recommendation</h4>
+              <p className="text-lg italic text-charcoal/90 leading-relaxed font-serif">
+                "{aiSuggestion}"
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
+            <button 
+              type="submit"
+              className="flex-[2] p-5 charcoal-bg text-white rounded-2xl font-bold uppercase tracking-[0.3em] text-xs hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-charcoal/20"
+            >
+              Request Itinerary
+            </button>
+            <button 
+              type="button"
+              onClick={getAiRecommendation}
+              disabled={isAiLoading}
+              className="flex-1 p-5 border-2 border-[#E2725B] terracotta-text rounded-2xl font-bold uppercase tracking-[0.2em] text-[10px] hover:bg-[#E2725B] hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isAiLoading ? (
+                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+              ) : '✨ Vibe Check'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default ContactForm;
